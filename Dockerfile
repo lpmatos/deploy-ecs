@@ -9,7 +9,7 @@ LABEL maintainer="Lucca Pessoa da Silva Matos - luccapsm@gmail.com" \
         org.label-schema.alpine="https://alpinelinux.org/" \
         org.label-schema.python="https://www.python.org/" \
         org.label-schema.aws="https://aws.amazon.com/pt/cli/" \
-        org.label-schema.name="AWS Deploy ECS"
+        org.label-schema.name="AWS - Deploy ECS"
 
 ENV PATH="/root/.local/bin:$PATH" \
     PYTHONIOENCODING=UTF-8
@@ -22,8 +22,7 @@ RUN set -ex && apk update && apk add --no-cache --update \
       jq=1.6-r0
 
 RUN curl -O https://raw.githubusercontent.com/rockymadden/slack-cli/master/src/slack && \
-    chmod +x slack && \
-    mv ./slack /usr/bin
+    chmod +x slack && mv ./slack /usr/bin
 
 ARG AWS_CLI_VERSION=1.18.39
 
@@ -32,7 +31,3 @@ RUN pip install --user awscli==${AWS_CLI_VERSION}
 COPY [ "./code", "." ]
 
 RUN find ./ -iname "*.sh" -type f -exec chmod a+x {} \; -exec echo {} \;;
-
-ENTRYPOINT []
-
-CMD [ "sh" ]
