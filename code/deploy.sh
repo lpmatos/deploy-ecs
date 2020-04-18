@@ -36,6 +36,12 @@ DATE_INFO=$(${DATE_CMD} +"%Y-%m-%d %T")
 DATE_INFO_SHORT=$(${DATE_CMD} +"%A %B")
 USER=$(whoami)
 
+CLUSTER_NAME=""
+SERVICE_NAME=""
+AWS_REGION=""
+TASK_DEFINTION_NAME=""
+SLACK_CHANNEL=""
+
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
@@ -73,6 +79,8 @@ Flags:
   -c, c, cluster, --cluster             AWS ECS Cluster Name
   -s, s, service, --service             AWS ECS Service Name
   -r, r, region, --region               AWS Region Name
+  task-name, --task-name                Task Definition Name
+  slack-channel, --slack-channe         Slack Channel Name
   -h, h, help, --help                   Show this help message
 
 EOF
@@ -83,7 +91,7 @@ EOF
 function AssertIsInstalled() {
   local readonly PACKAGE="$1"
   if [[ ! $(command -v ${PACKAGE}) ]]; then
-    echo "${RED}ERROR: The binary '$PACKAGE' is required by this script but is not installed or in the system's PATH.${NC}"
+    echo -e "\n${RED}ERROR: The binary '${PACKAGE}' is required by this script but is not installed or in the system's PATH.${NC}\n"
     exit 1
   fi
 }
@@ -104,7 +112,50 @@ function Time() {
 
 # ==============================================================================
 
+function CheckAWSVariables(){
+  [ ! "${AWS_ACCESS_KEY_ID}" ] && [ "${AWS_ACCESS_KEY_ID}" == "" ] && \
+    { echo -e "\n${RED}AWS Access Key is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      echo -e "${GREEN}AWS Access Key exist and is not empty${NC}"
+  [ ! "${AWS_SECRET_ACCESS_KEY}" ] && \
+    [ "${AWS_SECRET_ACCESS_KEY}" == "" ] && \
+      { echo -e "\n${RED}AWS Secret Key is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+        echo -e "${GREEN}AWS Secret Key exist and is not empty${NC}"
+  [ ! "${AWS_REGION}" ] && [ "${AWS_REGION}" == "" ] && \
+    AWS_REGION=us-east-1 || \
+      echo -e "\n${GREEN}AWS Region exist and is not empty${NC}"
+}
+
+# ==============================================================================
+
+function CheckGeneralVariables() {
+  [ ! "${CLUSTER_NAME}" ] && \
+  [ "${CLUSTER_NAME}" == "" ] && \
+    { echo -e "\n${RED}Cluster name is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      echo -e "${GREEN}Cluster Name exist and is not empty${NC}"
+  [ ! "${SERVICE_NAME}" ] && \
+    [ "${SERVICE_NAME}" == "" ] && \
+      { echo -e "\n${RED}Service name is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+        echo -e "${GREEN}Service Name exist and is not empty${NC}"
+  [ ! "${TASK_DEFINTION_NAME}" ] && \
+    [ "${TASK_DEFINTION_NAME}" == "" ] && \
+      { echo -e "\n${RED}Task Definition Name is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+        echo -e "${GREEN}Task Definition Name exist and is not empty${NC}"
+  [ ! "${VALIDATE_IMAGE}" ] && \
+    [ "${VALIDATE_IMAGE}" == "" ] && \
+      VALIDATE_IMAGE=${REPOSITORY_URL}:${CI_COMMIT_SHORT_SHA} || \
+        echo -e "\n${GREEN}Validate image exist and is not empty${NC}"
+  [ ! "${SLACK_CHANNEL}" ] && \
+    [ "${SLACK_CHANNEL}" == "" ] && \
+      { echo -e "\n${RED}Slack Channel is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+        echo -e "${GREEN}Slack Channel exist and is not empty${NC}"
+}
+
+# ==============================================================================
+
 function WaitForService() {
+  local CLUSTER_NAME=$1
+  local SERVICE_NAME=$2
+  local AWS_REGION=$3
   Status "Waiting for ECS service ${SERVICE_NAME} to become stable on ${CLUSTER_NAME} cluster..."
   aws ecs wait services-stable --region ${AWS_REGION} --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME}
   Status "Done! ECS services stable."
@@ -113,50 +164,19 @@ function WaitForService() {
 # ==============================================================================
 
 function ECSDeploy() {
+  Welcome
 
   AssertIsInstalled "figlet"
   AssertIsInstalled "aws"
 
-  local CLUSTER_NAME=""
-  local SERVICE_NAME=""
-  local AWS_REGION=""
+  CLUSTER_NAME=$1
+  SERVICE_NAME=$2
+  AWS_REGION=$3
+  TASK_DEFINTION_NAME=$4
+  SLACK_CHANNEL=$5
 
-  while [[ $# > 0 ]]; do
-    local CMD="${1}"
-    case "${CMD}" in
-      "c"|"-c"|"cluster"|"--cluster")
-        CLUSTER_NAME="${2}"
-        shift
-        ;;
-      "s"|"-s"|"service"|"--service")
-        SERVICE_NAME="${2}"
-        shift
-        ;;
-      "r"|"-r"|"region"|"--region")
-        AWS_REGION="${2}"
-        shift
-        ;;
-      "help"|"-h"|"h"|"--help")
-        Help
-        exit
-        ;;
-      *)
-        echo "${RED}ERROR: Unrecognized argument: ${CMD}${NC}"
-        Help && exit 1 ;;
-    esac
-    shift
-  done
-
-  [ ! "${AWS_REGION}" ] && [ "${AWS_REGION}" == "" ] && AWS_REGION=us-east-1 || echo -e "\n${GREEN}AWS Region exist and is not empty${NC}"
-  [ ! "${AWS_ACCESS_KEY_ID}" ] && [ "${AWS_ACCESS_KEY_ID}" == "" ] && { echo -e "\n${RED}AWS Access Key is empty or not exist. Bye bye!${NC}"; exit 1; } || echo -e "${GREEN}AWS Access Key exist and is not empty${NC}"
-  [ ! "${AWS_SECRET_ACCESS_KEY}" ] && [ "${AWS_SECRET_ACCESS_KEY}" == "" ] && { echo -e "\n${RED}AWS Secret Key is empty or not exist. Bye bye!${NC}"; exit 1; } || echo -e "${GREEN}AWS Secret Key exist and is not empty${NC}"
-  [ ! "${TASK_DEFINTION_NAME}" ] && [ "${TASK_DEFINTION_NAME}" == "" ] && { echo -e "\n${RED}Task Definition Name is empty or not exist. Bye bye!${NC}"; exit 1; } || echo -e "${GREEN}Task Definition Name exist and is not empty${NC}"
-  [ ! "${CLUSTER_NAME}" ] && [ "${CLUSTER_NAME}" == "" ] && { echo -e "\n${RED}Cluster name is empty or not exist. Bye bye!${NC}"; exit 1; } || echo -e "${GREEN}Cluster Name exist and is not empty${NC}"
-  [ ! "${SERVICE_NAME}" ] && [ "${SERVICE_NAME}" == "" ] && { echo -e "\n${RED}Service name is empty or not exist. Bye bye!${NC}"; exit 1; } || echo -e "${GREEN}Service Name exist and is not empty${NC}"
-  [ ! "${VALIDATE_IMAGE}" ] && [ "${VALIDATE_IMAGE}" == "" ] && VALIDATE_IMAGE=${REPOSITORY_URL}:${CI_COMMIT_SHORT_SHA} || echo -e "\n${GREEN}Validate image exist and is not empty${NC}"
-  [ ! "${SLACK_CHANNEL}" ] && [ "${SLACK_CHANNEL}" == "" ] && { echo -e "\n${RED}Slack Channel is empty or not exist. Bye bye!${NC}"; exit 1; } || echo -e "${GREEN}Slack Channel exist and is not empty${NC}"
-
-  Welcome
+  CheckAWSVariables
+  CheckGeneralVariables
 
   slack chat send --pretext "⚠️ ECS Deploy - A new deploy has started ⚠️" \
   --title "Information:" \
@@ -201,7 +221,7 @@ function ECSDeploy() {
     Status "${RED}Failed to register Task Definition. Exit...${NC}" && exit 1;
   fi
 
-  WaitForService
+  WaitForService ${CLUSTER_NAME} ${SERVICE_NAME} ${AWS_REGION}
 
   END=$(date +%s)
   DIFERENCE="$((${END} - ${START}))"
@@ -216,4 +236,38 @@ function ECSDeploy() {
 # MAIN
 # =============================================================================
 
-ECSDeploy
+while [[ $# > 0 ]]; do
+  CMD=${1}
+  case $CMD in
+    "c"|"-c"|"cluster"|"--cluster")
+      CLUSTER_NAME="${2}"
+      shift
+      ;;
+    "s"|"-s"|"service"|"--service")
+      SERVICE_NAME="${2}"
+      shift
+      ;;
+    "r"|"-r"|"region"|"--region")
+      AWS_REGION="${2}"
+      shift
+      ;;
+    "task-name"|"--task-name")
+      TASK_DEFINTION_NAME="${2}"
+      shift
+      ;;
+    "slack-channel"|"--slack-channel")
+      SLACK_CHANNEL="${2}"
+      shift
+      ;;
+    "help"|"-h"|"h"|"--help")
+      Help
+      exit
+      ;;
+    *)
+      echo "${RED}ERROR: Unrecognized argument: ${CMD}${NC}"
+      Help && exit 1 ;;
+  esac
+  shift
+done
+
+ECSDeploy ${CLUSTER_NAME} ${SERVICE_NAME} ${AWS_REGION} ${TASK_DEFINTION_NAME} ${SLACK_CHANNEL}
