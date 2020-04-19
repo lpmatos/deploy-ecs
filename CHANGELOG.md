@@ -7,6 +7,11 @@ All important changes to this project will be added to this file! This changelog
 ### Added
 
 * Adding docs about Docker commands. In this doc we list some Docker commands to help your develop.
+* Create new functions:
+  * Helper
+  * GetECSInfo
+  * ECSDeploy
+* Adding Command options.
 
 ## 1.0.0 - [15-04-2020]
 

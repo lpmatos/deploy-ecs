@@ -42,8 +42,6 @@ function Status() {
   echo -e "\n[DEPLOY]: ${1}"
 }
 
-# ==============================================================================
-
 function Welcome() {
   echo -e "\n"
   echo "AWS ECS Deploy" | figlet
@@ -57,8 +55,6 @@ function Welcome() {
   echo -e "* Version: ${YELLOW}1.0.0${YELLOW}${NC}"
   echo -e "-------------------------------------------------\n"
 }
-
-# ==============================================================================
 
 function Help() {
   local PROGNAME=$(basename ${0})
@@ -82,8 +78,6 @@ Flags:
 EOF
 }
 
-# ==============================================================================
-
 function AssertIsInstalled() {
   local readonly PACKAGE="$1"
   if [[ ! $(command -v ${PACKAGE}) ]]; then
@@ -91,8 +85,6 @@ function AssertIsInstalled() {
     exit 1
   fi
 }
-
-# ==============================================================================
 
 function Time() {
   if [[ -z ${1} || ${1} -lt 60 ]] ;then
@@ -106,9 +98,7 @@ function Time() {
   echo "${min} minutes and ${secs} seconds."
 }
 
-# ==============================================================================
-
-function CheckAWSVariables(){
+function CheckAWSVariables() {
   [ ! "${AWS_REGION}" ] && [ "${AWS_REGION}" == "" ] && \
       AWS_REGION=us-east-1 || \
         echo -e "\n${GREEN}AWS Region exist and is not empty${NC}"
@@ -120,9 +110,7 @@ function CheckAWSVariables(){
           echo -e "${GREEN}AWS Secret Key exist and is not empty${NC}"
 }
 
-# ==============================================================================
-
-function CheckSlackVariables(){
+function CheckSlackVariables() {
   [ ! "${SLACK_CHANNEL}" ] && [ "${SLACK_CHANNEL}" == "" ] && \
       { echo -e "\n${RED}Slack Channel is empty or not exist. Bye bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}Slack Channel exist and is not empty${NC}"
@@ -130,8 +118,6 @@ function CheckSlackVariables(){
       { echo -e "\n${RED}Slack CLI Token is empty or not exist. Bye bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}Slack CLI Token exist and is not empty${NC}"
 }
-
-# ==============================================================================
 
 function CheckGeneralVariables() {
   [ ! "${CLUSTER_NAME}" ] && [ "${CLUSTER_NAME}" == "" ] && \
@@ -148,39 +134,32 @@ function CheckGeneralVariables() {
           echo -e "${GREEN}Validate image exist and is not empty\n${NC}"
 }
 
-# ==============================================================================
-
 function WaitForService() {
   Status "Waiting for ECS service ${2} to become stable on ${1} cluster..."
   aws ecs wait services-stable --region ${3} --cluster ${1} --service ${2}
   Status "Done! ECS services stable."
 }
 
-# ==============================================================================
+function GetECSInfo() {
+  TASKS_DEFINITION=$(aws ecs describe-services --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --region "${AWS_REGION}" 2> /dev/null)
 
-function ECSDeploy() {
-  CLUSTER_NAME=$1
-  SERVICE_NAME=$2
-  TASK_DEFINTION_NAME=$3
-  VALIDATE_IMAGE=$4
-  AWS_ACCESS_KEY_ID=$5
-  AWS_SECRET_ACCESS_KEY=$6
-  AWS_REGION=$7
-  SLACK_CHANNEL=$8
-  SLACK_CLI_TOKEN=$9
-
-  Status "Getting Task Definition..."
-  TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "${TASK_DEFINTION_NAME}" --region "${AWS_REGION}" 2> /dev/null)
-
-  CURRENT_DESIRED_COUNT=$(echo ${TASK_DEFINITION} | jq --raw-output '.services[0].desiredCount')
-  CURRENT_TASK_REVISION=$(echo ${TASK_DEFINITION} | jq --raw-output '.services[0].taskDefinition')
-  CURRENT_RUNNING_TASK=$(echo ${TASK_DEFINITION} | jq --raw-output '.services[0].runningCount')
+  CURRENT_DESIRED_COUNT=$(echo ${TASKS_DEFINITION} | jq --raw-output '.services[0].desiredCount')
+  CURRENT_PENDING_COUNT=$(echo ${TASKS_DEFINITION} | jq --raw-output '.services[0].pendingCount')
+  CURRENT_RUNNING_COUNT=$(echo ${TASKS_DEFINITION} | jq --raw-output '.services[0].runningCount')
+  CURRENT_STATUS=$(echo ${TASKS_DEFINITION} | jq --raw-output '.services[0].status')
+  CURRENT_TASK_REVISION=$(echo ${TASKS_DEFINITION} | jq --raw-output '.services[0].taskDefinition')
 
   Status "Getting Task Status..."
-  echo "Current Desired Count: ${CURRENT_DESIRED_COUNT}"
-  echo "Current Task Revision: ${CURRENT_TASK_REVISION}"
-  echo "Current Running Task: ${CURRENT_RUNNING_TASK}"
-  echo "Current Stale Task: ${CURRENT_STALE_TASK}"
+  echo -e "\n${YELLOW}Current Desired Count${NC}: ${CURRENT_DESIRED_COUNT}"
+  echo -e "${YELLOW}Current Pending Count${NC}: ${CURRENT_PENDING_COUNT}"
+  echo -e "${YELLOW}Current Running Count${NC}: ${CURRENT_RUNNING_COUNT}"
+  echo -e "${YELLOW}Current Status${NC}: ${CURRENT_STATUS}"
+  echo -e "${YELLOW}Current Task Revision${NC}: ${CURRENT_TASK_REVISION}\n"
+}
+
+function ECSDeploy() {
+  Status "Getting Task Definition..."
+  TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "${TASK_DEFINTION_NAME}" --region "${AWS_REGION}" 2> /dev/null)
 
   Status "Getting New Container Definition..."
   NEW_CONTAINER_DEFINTIION=$(echo ${TASK_DEFINITION} | jq --arg IMAGE "${VALIDATE_IMAGE}" '.taskDefinition.containerDefinitions[0].image = $IMAGE | .taskDefinition.containerDefinitions[0]' 2> /dev/null)
@@ -192,11 +171,11 @@ function ECSDeploy() {
 
   if [ -n "${TASK_VERSION}" ]; then
     Status "Update ECS Cluster: ${CLUSTER_NAME}"
-    echo "Service: ${SERVICE_NAME}"
-    echo "Task Definition: ${TASK_DEFINTION_NAME}:${TASK_VERSION}"
+    echo -e "\n${YELLOW}Service${NC}: ${SERVICE_NAME}"
+    echo -e "${YELLOW}Task Definition${NC}: ${TASK_DEFINTION_NAME}:${TASK_VERSION}"
     Status "AWS ECS Update Service with new Task Definition..."
     DEPLOYED_SERVICE=$(aws ecs update-service --region "${AWS_REGION}" --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_DEFINTION_NAME}:${TASK_VERSION} | jq --raw-output '.service.serviceName')
-    Status "Deployment of ${DEPLOYED_SERVICE} ${GREEN}complete!${NC}\n"
+    Status "Deployment of ${DEPLOYED_SERVICE} ${GREEN}complete!${NC}"
   else
     END=$(date +%s)
     DIFERENCE="$((${END} - ${START}))"
@@ -205,7 +184,7 @@ function ECSDeploy() {
     --title "Information:" \
     --text "*Date Info*: ${DATE_INFO}\n*Status*: Running\n*Service:* ${SERVICE_NAME}\n*Cluster*: ${CLUSTER_NAME}\n*Current Task:* ${TASK_DEFINTION_NAME}\n*Time Elapsed*: ${RESULT}" \
     --channel ${SLACK_CHANNEL} \
-    --token ${SLACK_CLI_TOKEN}
+    --token ${SLACK_CLI_TOKEN} 2> /dev/null
     Status "${RED}Failed to register Task Definition. Exit...${NC}" && exit 1;
   fi
 
@@ -214,7 +193,6 @@ function ECSDeploy() {
   END=$(date +%s)
   DIFERENCE="$((${END} - ${START}))"
   RESULT=$(Time ${DIFERENCE})
-
 }
 
 # ==============================================================================
@@ -226,32 +204,25 @@ while [[ $# > 0 ]]; do
   case $CMD in
     "aws-access"|"-aws-access"|"--aws-access")
       AWS_ACCESS_KEY_ID=$(echo ${2} && ${AWS_ACCESS_KEY_ID} || "")
-      shift
-      ;;
+      shift ;;
     "aws-secret"|"-aws-secret"|"--aws-secret")
       AWS_SECRET_ACCESS_KEY=$(echo ${2} && ${AWS_SECRET_ACCESS_KEY} || "")
-      shift
-      ;;
+      shift ;;
     "c"|"-c"|"cluster"|"--cluster")
       CLUSTER_NAME=$(echo ${2} && ${CLUSTER_NAME} || "")
-      shift
-      ;;
+      shift ;;
     "s"|"-s"|"service"|"--service")
       SERVICE_NAME=$(echo ${2} && ${SERVICE_NAME} || "")
-      shift
-      ;;
+      shift ;;
     "r"|"-r"|"region"|"--region")
       AWS_REGION=$(echo ${2} && ${AWS_REGION} || "")
-      shift
-      ;;
+      shift ;;
     "i"|"-i"|"image"|"--image")
       VALIDATE_IMAGE=$(echo ${2} && ${VALIDATE_IMAGE} || "")
-      shift
-      ;;
+      shift ;;
     "-task-name"|"task-name"|"--task-name")
       TASK_DEFINTION_NAME=$(echo ${2} && ${TASK_DEFINTION_NAME} || "")
-      shift
-      ;;
+      shift ;;
     "-slack-channel"|"slack-channel"|"--slack-channel")
       SLACK_CHANNEL=$(echo ${2} && ${SLACK_CHANNEL} || "#validation")
       if [ $SLACK_CHANNEL =~ "#" ]; then
@@ -260,16 +231,12 @@ while [[ $# > 0 ]]; do
         echo -e "\nAdding # in Slack Channel"
         SLACK_CHANNEL="#${SLACK_CHANNEL}"
       fi
-      shift
-      ;;
+      shift ;;
     "-slack-token"|"slack-token"|"--slack-token")
       SLACK_CLI_TOKEN=$(echo ${2} && ${SLACK_CLI_TOKEN} || "")
-      shift
-      ;;
+      shift ;;
     "help"|"-h"|"h"|"--help")
-      Help
-      exit
-      ;;
+      Help && exit 1 ;;
     *)
       echo "${RED}ERROR: Unrecognized argument: ${CMD}${NC}"
       Help && exit 1 ;;
@@ -281,34 +248,22 @@ done
 # MAIN
 # ==============================================================================
 
-Welcome
+Welcome && AssertIsInstalled "figlet" && AssertIsInstalled "aws" && \
+  AssertIsInstalled "slack" && AssertIsInstalled "bc" && \
+  CheckAWSVariables && CheckSlackVariables && CheckGeneralVariables
 
-AssertIsInstalled "figlet"
-AssertIsInstalled "aws"
-AssertIsInstalled "slack"
-
-CheckAWSVariables
-CheckSlackVariables
-CheckGeneralVariables
-
-slack chat send --pretext "⚠️ ECS Deploy - A new deploy has started ⚠️" \
+GetECSInfo ${CLUSTER_NAME} ${SERVICE_NAME} ${AWS_REGION} && slack chat send --pretext "⚠️ ECS Deploy - A new deploy has started ⚠️" \
 --title "Information:" \
 --text "*Date Info*: ${DATE_INFO}\n*Status*: Running\n*Service:* ${SERVICE_NAME}\n*Cluster*: ${CLUSTER_NAME}\n*Current Task:* ${TASK_DEFINTION_NAME}" \
 --channel ${SLACK_CHANNEL} \
---token ${SLACK_CLI_TOKEN}
+--token ${SLACK_CLI_TOKEN} 2> /dev/null
 
-ECSDeploy ${CLUSTER_NAME} \
-          ${SERVICE_NAME} \
-          ${TASK_DEFINTION_NAME} \
-          ${VALIDATE_IMAGE} \
-          ${AWS_ACCESS_KEY_ID} \
-          ${AWS_SECRET_ACCESS_KEY} \
-          ${AWS_REGION} \
-          ${SLACK_CHANNEL} \
-          ${SLACK_CLI_TOKEN}
+ECSDeploy
+
+GetECSInfo ${CLUSTER_NAME} ${SERVICE_NAME} ${AWS_REGION}
 
 slack chat send --pretext "✔️ ECS Deploy - Deploy was successfully completed ✔️" \
-  --title "Information:" \
-  --text "*Date Info*: ${DATE_INFO}\n*Status*: Done - ECS Service Stable\n*Service:* ${SERVICE_NAME}\n*Cluster*: ${CLUSTER_NAME}\n*Old Task*: ${TASK_DEFINTION_NAME}\n*New Task:* ${TASK_DEFINTION_NAME}:${TASK_VERSION}\n*Time Elapsed*: ${RESULT}" \
-  --channel ${SLACK_CHANNEL} \
-  --token ${SLACK_CLI_TOKEN}
+--title "Information:" \
+--text "*Date Info*: ${DATE_INFO}\n*Status*: Done - ECS Service Stable\n*Service:* ${SERVICE_NAME}\n*Cluster*: ${CLUSTER_NAME}\n*Old Task*: ${TASK_DEFINTION_NAME}\n*New Task:* ${TASK_DEFINTION_NAME}:${TASK_VERSION}\n*Time Elapsed*: ${RESULT}" \
+--channel ${SLACK_CHANNEL} \
+--token ${SLACK_CLI_TOKEN} 2> /dev/null
