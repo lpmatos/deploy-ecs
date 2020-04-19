@@ -2,7 +2,7 @@
   <img alt="helm" src="https://miro.medium.com/max/626/1*RmiGt6GAWf4pkO9ohOnRaQ.png" width="250px" float="center"/>
 </p>
 
-<h1 align="center">AWS EC2 Deploy</h1>
+<h1 align="center">AWS EC2 Deploy + Slack Notificaions</h1>
 
 <p align="center">
   <strong>This is a simple project that help when you want a ECS Deploy</strong>
