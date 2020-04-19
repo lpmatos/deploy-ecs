@@ -9,6 +9,44 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/lpmatos/deploy-ecs">
+    <img alt="Open Source" src="https://badges.frapsoft.com/os/v1/open-source.svg?v=102">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs/graphs/contributors">
+    <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/lpmatos/deploy-ecs">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs">
+    <img alt="GitHub Language Count" src="https://img.shields.io/github/languages/count/lpmatos/deploy-ecs">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs">
+    <img alt="GitHub Top Language" src="https://img.shields.io/github/languages/top/lpmatos/deploy-ecs">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs/stargazers">
+    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/lpmatos/deploy-ecs?style=social">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs/commits/master">
+    <img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/lpmatos/deploy-ecs">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs">
+    <img alt="Repository Size" src="https://img.shields.io/github/repo-size/lpmatos/deploy-ecs">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs/issues">
+    <img alt="Repository Issues" src="https://img.shields.io/github/issues/lpmatos/deploy-ecs">
+  </a>
+
+  <a href="https://github.com/lpmatos/deploy-ecs/blob/master/LICENSE">
+    <img alt="MIT License" src="https://img.shields.io/github/license/lpmatos/deploy-ecs">
+  </a>
+</p>
+
+<p align="center">
   <a href="#pre-requisites">Pre-Requisites</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#description">Description</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#environment-variables">Environment Variables</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
@@ -89,7 +127,7 @@ Down all services and delete all images.
 docker-compose down --rmi all
 ```
 
-## How to contribute
+## 🎒 How to contribute
 
 1. Make a **Fork**.
 2. Follow the project organization.
@@ -100,7 +138,7 @@ docker-compose down --rmi all
 
 Remember: There is no bad code, there are different views/versions of solving the same problem. 😊
 
-## Add to git and push
+## 🔔 Add to git and push
 
 You must send the project to your GitHub after the modifications
 
@@ -110,10 +148,44 @@ git commit -m "Added - Fixing somethings"
 git push origin master
 ```
 
-## Versioning
+## 📋 Versioning
 
 - [CHANGELOG](CHANGELOG.md)
 
-## Project Status
+## 📜 License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+## ☎️ Contacts
+
+Hey!! If you like this project or if you find some bugs feel free to contact me in my channels:
+
+* **Email**: luccapsm@gmail.com
+* **Linkedin**: www.linkedin.com/in/lucca-pessoa-4abb71138/
+
+[![Facebook](https://github.frapsoft.com/social/facebook.png)](https://www.facebook.com/lucca.pessoa.9)
+[![Github](https://github.frapsoft.com/social/github.png)](https://github.com/lpmatos)
+
+## ✨ Contributors
+
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/lpmatos"><img src="https://avatars2.githubusercontent.com/u/58797390?s=400&v=4" width="100px;" alt=""/><br /><sub><b>Lucca Pessoa</b></sub></a><br /><a href="https://github.com/lpmatos/deploy-ecs/commits?author=lpmatos" title="Code">💻</a></a></td>
+  <tr>
+</table>
+
+## 🐯 Autor
+
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/lpmatos"><img src="https://avatars2.githubusercontent.com/u/58797390?s=400&v=4" width="100px;" alt=""/><br /><sub><b>Lucca Pessoa</b></sub></a><br /><a href="https://github.com/lpmatos/deploy-ecs/commits?author=lpmatos" title="Code">💻</a> <a href="https://github.com/lpmatos/deploy-ecs/commits?author=lpmatos" title="Design">🎨</a></td>
+  <tr>
+</table>
+
+## ✳️ Project Status
 
 * ✔️ Finish
+
+---
+
+<p align="center">Feito com ❤️ by <strong>Lucca Pessoa :wave:</p>
