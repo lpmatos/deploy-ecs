@@ -1,18 +1,11 @@
 # ==============================================================================
 ## DESCRIPTION: Deploy AWS ECS.
-## NAME: deploy.sh
-## AUTHOR: Lucca Pessoa da Silva Matos
-## DATE: 17.04.2020
-## VERSION: 1.0
+## AUTHOR: Cloud Team
 ## RUN:
 ##      > chmod a+x ./deploy.sh && bash deploy.sh -h
 # ==============================================================================
 
-START=$(date +%s)
-
-# ==============================================================================
-# OUTPUT-COLORING
-# ==============================================================================
+set -eo pipefail
 
 # High Intensity
 BLACK="\033[0;90m"       # Black
@@ -28,11 +21,17 @@ NC="\033[0;97m"          # White
 # VALUES
 # ==============================================================================
 
+VERSION="1.2.0"
+START=$(date +%s)
+
 OS=`uname`
 [ "${OS}" = "Linux" ] && DATE_CMD="date" || DATE_CMD="gdate"
 DATE_INFO=$(${DATE_CMD} +"%Y-%m-%d %T")
 DATE_INFO_SHORT=$(${DATE_CMD} +"%A %B")
 USER=$(whoami)
+
+SUCESS=0
+BAD=1
 
 # ==============================================================================
 # FUNCTIONS
@@ -40,6 +39,33 @@ USER=$(whoami)
 
 function Status() {
   echo -e "\n[DEPLOY]: ${1}"
+}
+
+function Abort(){
+  echo >&2 '
+  ***************
+  *** ABORTED ***
+  ***************
+  '
+  echo "An error has occurred. Going out..." >&2
+  exit ${BAD}
+}
+
+function Verify(){
+  if [ $? -eq $SUCESS ]
+  then
+    echo -e "\nCommand executed with ${GREEN}success${NC}!"
+  else
+    END=$(date +%s)
+    DIFERENCE="$((${END} - ${START}))"
+    RESULT=$(Time ${DIFERENCE})
+    slack chat send --pretext "❌ ECS Deploy - Failed Deploy ❌" \
+    --title "Information:" \
+    --text "*Date Info*: ${DATE_INFO}\n*Status*: Running\n*Service:* ${SERVICE_NAME}\n*Cluster*: ${CLUSTER_NAME}\n*Current Task:* ${TASK_DEFINTION_NAME}\n*Time Elapsed*: ${RESULT}" \
+    --channel ${SLACK_CHANNEL} \
+    --token ${SLACK_CLI_TOKEN} 2> /dev/null
+    Status "${RED}Return Status Not Expected - Verify. Exit...${NC}" && Abort;
+  fi
 }
 
 function Welcome() {
@@ -50,15 +76,15 @@ function Welcome() {
   echo -e "* ${DATE_INFO}"
   echo -e "* System - ${OS}"
   echo -e "*"
-  echo -e "* Autor: ${YELLOW}Lucca Pessoa da Silva Matos${YELLOW}${NC}"
-  echo -e "* Description: ${BLUE}Script to help with AWS ECS deploys${BLUE}${NC}"
-  echo -e "* Version: ${YELLOW}1.0.0${YELLOW}${NC}"
+  echo -e "* Autor: ${YELLOW}Cloud Team${YELLOW}${NC}"
+  echo -e "* Description: ${BLUE}Script to help with AWS ECS Deploys${BLUE}${NC}"
+  echo -e "* Version: ${YELLOW}${VERSION}${YELLOW}${NC}"
   echo -e "-------------------------------------------------\n"
 }
 
 function Help() {
   local PROGNAME=$(basename ${0})
-  echo -e "\n${CYAN}Script $PROGNAME: By ${YELLOW}Lucca Pessoa da Silva Matos.${NC}"
+  echo -e "\n${CYAN}Script $PROGNAME: By ${YELLOW}Cloud Team.${NC}"
   cat <<EOF
 
 Description: Deploy ECS from Bash.
@@ -68,8 +94,8 @@ Flags:
   -s, s, service, --service             AWS ECS Service Name
   -r, r, region, --region               AWS Region Name
   -i, i, image, --image                 Image Used in ECS Task
-  aws-access, --aws-access              AWA Access Key
-  aws-secret, --aws-secret              AWA Secret Key
+  aws-access, --aws-access              AWS Access Key
+  aws-secret, --aws-secret              AWS Secret Key
   task-name, --task-name                Task Definition Name
   slack-channel, --slack-channe         Slack Channel Name
   slack-token, --slack-token            Slack CLI Token
@@ -103,31 +129,31 @@ function CheckAWSVariables() {
       AWS_REGION=us-east-1 || \
         echo -e "\n${GREEN}AWS Region exist and is not empty${NC}"
   [ ! "${AWS_ACCESS_KEY_ID}" ] && [ "${AWS_ACCESS_KEY_ID}" == "" ] && \
-      { echo -e "\n${RED}AWS Access Key is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      { echo -e "\n${RED}AWS Access Key is empty or not exist. Bye Bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}AWS Access Key exist and is not empty${NC}"
   [ ! "${AWS_SECRET_ACCESS_KEY}" ] && [ "${AWS_SECRET_ACCESS_KEY}" == "" ] && \
-      { echo -e "\n${RED}AWS Secret Key is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      { echo -e "\n${RED}AWS Secret Key is empty or not exist. Bye Bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}AWS Secret Key exist and is not empty${NC}"
 }
 
 function CheckSlackVariables() {
   [ ! "${SLACK_CHANNEL}" ] && [ "${SLACK_CHANNEL}" == "" ] && \
-      { echo -e "\n${RED}Slack Channel is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      { echo -e "\n${RED}Slack Channel is empty or not exist. Bye Bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}Slack Channel exist and is not empty${NC}"
   [ ! "${SLACK_CLI_TOKEN}" ] && [ "${SLACK_CLI_TOKEN}" == "" ] && \
-      { echo -e "\n${RED}Slack CLI Token is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      { echo -e "\n${RED}Slack CLI Token is empty or not exist. Bye Bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}Slack CLI Token exist and is not empty${NC}"
 }
 
 function CheckGeneralVariables() {
   [ ! "${CLUSTER_NAME}" ] && [ "${CLUSTER_NAME}" == "" ] && \
-      { echo -e "\n${RED}Cluster name is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      { echo -e "\n${RED}Cluster name is empty or not exist. Bye Bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}Cluster Name exist and is not empty${NC}"
   [ ! "${SERVICE_NAME}" ] && [ "${SERVICE_NAME}" == "" ] && \
-      { echo -e "\n${RED}Service name is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      { echo -e "\n${RED}Service name is empty or not exist. Bye Bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}Service Name exist and is not empty${NC}"
   [ ! "${TASK_DEFINTION_NAME}" ] && [ "${TASK_DEFINTION_NAME}" == "" ] && \
-      { echo -e "\n${RED}Task Definition Name is empty or not exist. Bye bye!${NC}"; exit 1; } || \
+      { echo -e "\n${RED}Task Definition Name is empty or not exist. Bye Bye!${NC}"; exit 1; } || \
           echo -e "${GREEN}Task Definition Name exist and is not empty${NC}"
   [ ! "${VALIDATE_IMAGE}" ] && [ "${VALIDATE_IMAGE}" == "" ] && \
       VALIDATE_IMAGE=${REPOSITORY_URL}:${CI_COMMIT_SHORT_SHA} || \
@@ -136,8 +162,8 @@ function CheckGeneralVariables() {
 
 function WaitForService() {
   Status "Waiting for ECS service ${2} to become stable on ${1} cluster..."
-  aws ecs wait services-stable --region ${3} --cluster ${1} --service ${2}
-  Status "Done! ECS services stable."
+  timeout 1000000 aws ecs wait services-stable --region ${3} --cluster ${1} --service ${2}
+  Verify && Status "Done! ECS services stable."
 }
 
 function GetECSInfo() {
@@ -170,10 +196,13 @@ function ECSDeploy() {
   Status "Registered ECS Task Definition: ${TASK_VERSION}"
 
   if [ -n "${TASK_VERSION}" ]; then
-    Status "Update ECS Cluster: ${CLUSTER_NAME}"
+    Status "ECS Cluster: ${CLUSTER_NAME}"
     echo -e "\n${YELLOW}Service${NC}: ${SERVICE_NAME}"
     echo -e "${YELLOW}Task Definition${NC}: ${TASK_DEFINTION_NAME}:${TASK_VERSION}"
-    Status "AWS ECS Update Service with new Task Definition..."
+    OLD_TASK_ID=$(aws ecs list-tasks --desired-status RUNNING --region "${AWS_REGION}" --cluster ${CLUSTER_NAME} --family ${TASK_DEFINTION_NAME} | egrep "task/" | sed -E "s/.*task\/(.*)\"/\1/")
+    Status "Stop Task ${OLD_TASK_ID}..."
+    aws ecs stop-task --cluster ${CLUSTER_NAME} --region "${AWS_REGION}" --task ${OLD_TASK_ID}
+    Status "ECS Update Service with new Task Definition..."
     DEPLOYED_SERVICE=$(aws ecs update-service --region "${AWS_REGION}" --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_DEFINTION_NAME}:${TASK_VERSION} | jq --raw-output '.service.serviceName')
     Status "Deployment of ${DEPLOYED_SERVICE} ${GREEN}complete!${NC}"
   else
@@ -267,3 +296,5 @@ slack chat send --pretext "✔️ ECS Deploy - Deploy was successfully completed
 --text "*Date Info*: ${DATE_INFO}\n*Status*: Done - ECS Service Stable\n*Service:* ${SERVICE_NAME}\n*Cluster*: ${CLUSTER_NAME}\n*Old Task*: ${TASK_DEFINTION_NAME}\n*New Task:* ${TASK_DEFINTION_NAME}:${TASK_VERSION}\n*Time Elapsed*: ${RESULT}" \
 --channel ${SLACK_CHANNEL} \
 --token ${SLACK_CLI_TOKEN} 2> /dev/null
+
+Verify
